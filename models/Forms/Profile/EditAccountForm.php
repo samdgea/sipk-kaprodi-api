@@ -1,6 +1,6 @@
 <?php
 
-namespace app\models\Forms;
+namespace app\models\Forms\Profile;
 
 use Yii;
 use yii\base\Model;
@@ -36,7 +36,9 @@ class EditAccountForm extends Model
         return [
             [['first_name'], 'required'],
             [['first_name', 'last_name', 'user_name', 'password'], 'string', 'max' => 50],
-            // ['user_name', 'unique']
+            ['user_name', 'unique', 'targetClass' => User::class, 'targetAttribute' => 'user_name', 'filter' => function($q) {
+                $q->andWhere(['not', ['user_name' => $this->user_name]]);
+            }]
         ];
     }
 
@@ -50,7 +52,6 @@ class EditAccountForm extends Model
             $this->_user->first_name = $this->first_name;
             $this->_user->last_name = $this->last_name;
             if (!empty($this->user_name)) $this->_user->user_name = $this->user_name;
-            if (!empty($this->password)) $this->_user->makePassword($this->password);
             $this->_user->updated_at = Carbon::now();
             return $this->_user->save();
         } 

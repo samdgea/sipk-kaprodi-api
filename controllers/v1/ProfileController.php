@@ -7,7 +7,8 @@ use yii\rest\Controller;
 use app\models\User;
 use app\models\AccessToken;
 
-use app\models\Forms\EditAccountForm;
+use app\models\Forms\Profile\EditAccountForm;
+use app\models\Forms\Profile\ChangePasswordForm;
 
 use yii\filters\auth\HttpBearerAuth;
 
@@ -89,6 +90,32 @@ class ProfileController extends Controller
 
                 $this->_code = 400;
             }
+        }
+
+        return $this->_sendResponse($this->_response, $this->_code);
+    }
+
+    public function actionChangePassword()
+    {
+        $model = new ChangePasswordForm();
+
+        if ($model->load(Yii::$app->request->post(), '') && $model->executeChangePassword())
+        {
+            $this->_response = [
+                'success' => true,
+                'desc' => 'Permintaan ubah password berhasil',
+                'data' => null
+            ];
+
+            $this->_code = 200;
+        } else {
+            $this->_response = [
+                'success' => false,
+                'desc' => 'Permintaan anda tidak sesuai dengan validasi',
+                'data' => $model->getErrorSummary($model->getErrors())
+            ];
+
+            $this->_code = 400;
         }
 
         return $this->_sendResponse($this->_response, $this->_code);
