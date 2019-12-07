@@ -6,7 +6,10 @@ use Yii;
 use yii\rest\Controller;
 use app\models\User;
 
-use app\models\Forms\LoginForm;
+use app\models\Forms\Auth\LoginForm;
+use app\models\Forms\Auth\RegisterForm;
+use app\models\Forms\Auth\EmailValidationForm;
+use app\models\Forms\Auth\ForgotPasswordForm;
 
 class AuthController extends Controller 
 {
@@ -15,35 +18,135 @@ class AuthController extends Controller
      */
     public $modelClass = User::class;
 
+    private $_response = [];
+    private $_code = 400;
+
     public function actionLogin()
     {
         $model = new LoginForm();
         
         if ($model->load(Yii::$app->request->post(), '') && $model->login()) {
-            return Yii::createObject([
-                'class' => 'yii\web\Response',
-                'format' => \yii\web\Response::FORMAT_JSON,
+           
+            $this->_response = [
+                'success' => true,
+                'desc' => 'Berhasil login',
                 'data' => [
-                    'success' => true,
-                    'desc' => 'Berhasil login',
-                    'data' => [
-                        'token' => $model->accessToken
-                    ]
-                ],
-                'statusCode' => 200
-            ]);
+                    'token' => $model->accessToken
+                ]
+            ];
+            $this->_code = 200;
         } else {
-            return Yii::createObject([
-                'class' => 'yii\web\Response',
-                'format' => \yii\web\Response::FORMAT_JSON,
-                'data' => [
-                    'success' => false,
-                    'desc' => 'Account disabled or invalid credentials',
-                    'data' => null
-                ],
-                'statusCode' => 401
-            ]);
+            $this->_response = [
+                'success' => false,
+                'desc' => 'Account disabled or invalid credentials',
+                'data' => null
+            ];
+            $this->_code = 401;
         }
+
+        return $this->_sendResponse($this->_response, $this->_code);
+    }
+
+    public function actionRegister()
+    {
+        $model = new RegisterForm();
+
+        if ($model->load(Yii::$app->request->post(), '') && $model->executeCreateAccount())
+        {
+            $this->_sendVerificationEmail($model->getUserDetail());
+
+
+            $this->_response = [
+                'success' => true,
+                'desc' => 'Berhasil registrasi akun, silahkan cek email anda untuk verifikasi akun',
+                'data' => $model->getUserDetail()
+            ];
+
+            $this->_code = 201;
+        } else {
+            $this->_response = [
+                'success' => false,
+                'desc' => 'Permintaan anda tidak sesuai dengan validasi',
+                'data' => $model->getErrorSummary($model->getErrors())
+            ];
+            $this->_code = 400;
+        }
+
+        return $this->_sendResponse($this->_response, $this->_code);
+    }
+
+    public function actionVerify()
+    {
+        $model = new EmailValidationForm();
+
+        if ($model->load(Yii::$app->request->post(), '') && $model->executeValidateAccount())
+        {
+            $this->_response = [
+                'success' => true,
+                'desc' => 'Akun anda telah berhasil di verifikasi',
+                'data' => null
+            ];
+            $this->_code = 200;
+        } else {
+            $this->_response = [
+                'success' => false,
+                'desc' => 'Permintaan anda tidak sesuai dengan validasi',
+                'data' => $model->getErrorSummary($model->getErrors())
+            ];
+            $this->_code = 400;
+        }
+
+        return $this->_sendResponse($this->_response, $this->_code);
+    }
+
+    public function actionForgot()
+    {
+        $model = new ForgotPasswordForm();
+
+        if ($model->load(Yii::$app->request->post(), '') && $model->executeValidateAccount())
+        {
+            $this->_sendVerificationEmail($model->getUserDetail(), 'Your forgot password verification code');
+
+            $this->_response = [
+                'success' => true,
+                'desc' => 'Kode untuk verifikasi lupa password telah dikirimkan ke email anda.',
+                'data' => null
+            ];
+            $this->_code = 200;
+        } else {
+            $this->_response = [
+                'success' => false,
+                'desc' => 'Permintaan anda tidak sesuai dengan validasi',
+                'data' => $model->getErrorSummary($model->getErrors())
+            ];
+            $this->_code = 400;
+        }
+
+        return $this->_sendResponse($this->_response, $this->_code);
+    }
+
+    public function actionForgotValidate()
+    {
+        $model = new ForgotPasswordForm();
+
+        if ($model->load(Yii::$app->request->post(), '') && $model->executeChangePassword())
+        {
+            $this->_response = [
+                'success' => true,
+                'desc' => 'Anda telah berhasil mengubah kata sandi anda, silahkan log-in menggunakan kredensial baru anda.',
+                'data' => null
+            ];
+            $this->_code = 200;
+        } else {
+            $this->_response = [
+                'success' => false,
+                'desc' => 'Permintaan anda tidak sesuai dengan validasi',
+                'data' => $model->getErrorSummary($model->getErrors())
+            ];
+            $this->_code = 400;
+        }
+
+        return $this->_sendResponse($this->_response, $this->_code);
     }
 
     /**
@@ -54,7 +157,28 @@ class AuthController extends Controller
     public function verbs() 
     {
         return [
-            'login' => ['POST']
+            'login' => ['POST'],
+            'register' => ['POST']
         ];
+    }
+
+    private function _sendResponse($data, $status_code)
+    {
+        return Yii::createObject([
+            'class' => 'yii\web\Response',
+            'format' => \yii\web\Response::FORMAT_JSON,
+            'data' => $data,
+            'statusCode' => $status_code
+        ]);  
+    }
+
+    private function _sendVerificationEmail($user, $subject = "Please validate your account")
+    {
+        return Yii::$app->mailer->compose()
+                    ->setFrom('no-reply@yai.ac.id')
+                    ->setTo($user->email_address)
+                    ->setSubject($subject)
+                    ->setTextBody("Hi, this is your verification code: " . $user->email_verification_hash . "\nPlease ignore if you did not request it")
+                    ->send();
     }
 }

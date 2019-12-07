@@ -20,6 +20,7 @@ use yii\base\NotSupportedException;
  * @property integer $account_status
  * @property string $created_at
  * @property string $updated_at
+ * @property string $email_verification_hash
  */
 class User extends ActiveRecord implements IdentityInterface
 {
@@ -130,7 +131,12 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public function makePassword($plain_text) 
     {
-        $this->password = Yii::$app->getSecurity()->generatePasswordHash($plain_text);
+        $this->password_hashed = Yii::$app->getSecurity()->generatePasswordHash($plain_text);
+    }
+
+    public function makeEmailVerifyHash()
+    {
+        $this->email_verification_hash = Yii::$app->getSecurity()->generateRandomString(50);
     }
 
     /**

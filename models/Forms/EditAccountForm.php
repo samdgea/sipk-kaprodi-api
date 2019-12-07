@@ -6,11 +6,12 @@ use Yii;
 use yii\base\Model;
 
 use app\models\User;
+use Carbon\Carbon;
 
 /**
  * EditAccountForm is model behind validation of edit account
  * 
- * @property User|null $user This prop is read-only
+ * @property User|null $_user This prop is read-only
  * 
  */
 class EditAccountForm extends Model
@@ -50,17 +51,18 @@ class EditAccountForm extends Model
             $this->_user->last_name = $this->last_name;
             if (!empty($this->user_name)) $this->_user->user_name = $this->user_name;
             if (!empty($this->password)) $this->_user->makePassword($this->password);
-
+            $this->_user->updated_at = Carbon::now();
             return $this->_user->save();
-        } else {
-            return false;
-        }
+        } 
+        
+        return false;
     }
 
     public function getUser()
     {
         $res = $this->_user;
         unset($res['password_hashed']);
+        unset($res['email_verification_hash']);
 
         return $res;
     }
