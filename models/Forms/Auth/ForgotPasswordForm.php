@@ -44,6 +44,7 @@ class ForgotPasswordForm extends Model
             {
                 if ($this->password === $this->password_repeat)
                 {
+                    $this->_user->email_verification_hash = null;
                     $this->_user->makePassword($this->password);
                     return $this->_user->save();
                 } else {
