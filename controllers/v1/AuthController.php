@@ -174,11 +174,10 @@ class AuthController extends Controller
 
     private function _sendVerificationEmail($user, $subject = "Please validate your account")
     {
-        return Yii::$app->mailer->compose()
-                    ->setFrom('no-reply@yai.ac.id')
-                    ->setTo($user->email_address)
-                    ->setSubject($subject)
-                    ->setTextBody("Hi, this is your verification code: " . $user->email_verification_hash . "\nPlease ignore if you did not request it")
-                    ->send();
+        return Yii::$app->queue->push(new \app\jobs\SendRegistrationMailJob([
+            'to_email' => $user->email_address,
+            'subject_title' => $subject,
+            'body' => "Hi, this is your verification code: " . $user->email_verification_hash . "\nPlease ignore if you did not request it"
+        ]));
     }
 }
