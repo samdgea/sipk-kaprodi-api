@@ -9,8 +9,9 @@ use app\models\AccessToken;
 
 use app\models\Forms\Profile\EditAccountForm;
 use app\models\Forms\Profile\ChangePasswordForm;
-
+use app\models\Forms\Profile\EditAccountPictureForm;
 use yii\filters\auth\HttpBearerAuth;
+use yii\web\UploadedFile;
 
 class ProfileController extends Controller 
 {
@@ -44,7 +45,8 @@ class ProfileController extends Controller
     {
         return [
             'logout' => ['POST'],
-            'me' => ['GET', 'POST']
+            'me' => ['GET', 'POST'],
+            'change-profile-picture' => ['POST']
         ];
     }
 
@@ -90,6 +92,42 @@ class ProfileController extends Controller
 
                 $this->_code = 400;
             }
+        }
+
+        return $this->_sendResponse($this->_response, $this->_code);
+    }
+
+    public function actionChangeProfilePicture()
+    {
+        $model = new EditAccountPictureForm();
+        $model->picture = UploadedFile::getInstanceByName('picture');
+
+        if (!empty($model->picture)) {
+            if ($model->processUpload()) {
+                $this->_response = [
+                    'success' => true,
+                    'desc' => 'Ubah gambar profil berhasil',
+                    'data' => $model->getUser()
+                ];
+    
+                $this->_code = 200;
+            } else {
+                $this->_response = [
+                    'success' => false,
+                    'desc' => 'Permintaan anda tidak sesuai dengan validasi',
+                    'data' => $model->getErrorSummary($model->getErrors())
+                ];
+    
+                $this->_code = 400;
+            }
+        } else {
+            $this->_response = [
+                'success' => false,
+                'desc' => 'Harap pilih gambar yang ingin di gunakan',
+                'data' => null
+            ];
+
+            $this->_code = 400;
         }
 
         return $this->_sendResponse($this->_response, $this->_code);
