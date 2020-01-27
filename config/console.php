@@ -63,6 +63,7 @@ $config = [
             'migrationPath' => null,
             'migrationNamespaces' => [
                 // ...
+                'app\migrations',
                 'yii\queue\db\migrations',
             ],
         ],

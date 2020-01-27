@@ -5,7 +5,7 @@ namespace app\models\Forms\Profile;
 use Yii;
 use yii\base\Model;
 use app\models\User;
-
+use yii2mod\ftp\FtpClient;
 /**
  * EditAccountPictureForm is model behind validation of edit account profile picture
  * 
@@ -18,10 +18,16 @@ class EditAccountPictureForm extends Model
     public $picture;
     
     private $_user = false;
+    private $ftp;
 
     public function __construct()
     {
         $this->_user = User::findOne(Yii::$app->user->id);
+
+        // FTP Client
+        $this->ftp = new FtpClient();
+        $this->ftp->connect("139.99.21.240");
+        $this->ftp->login("sipk-upload@sammy.works", "MuX=o7_O7lVF");
     }
 
     /**
@@ -40,11 +46,9 @@ class EditAccountPictureForm extends Model
         {
             $fileName = uniqid(rand(), false) . '.' . $this->picture->extension;
             
-            // Remove / Delete Old Profile Picture
-            $this->_removeOldPicture();
+            // Process save image to FTP Server
+            $this->_processImage($fileName);
 
-            // Save New Profile Picture and save to database
-            $this->picture->saveAs(Yii::getAlias('@app') . '/web/images/uploads/profile/' . $fileName);
             $this->_user->profile_picture = $fileName;
 
             return $this->_user->save();
@@ -62,9 +66,17 @@ class EditAccountPictureForm extends Model
         return $res;
     }
 
-    private function _removeOldPicture()
+    private function _processImage($fileName)
     {
-        if (file_exists(Yii::getAlias('@app') . '/web/images/uploads/profile/' . $this->_user->profile_picture)) 
-            unlink(Yii::getAlias('@app') . '/web/images/uploads/profile/' . $this->_user->profile_picture);
+        // Check old picture, then remove it
+        if (!empty($this->_user->profile_picture) && $this->ftp->size("/" . $this->_user->profile_picture) > 0)
+            $this->ftp->delete($this->_user->profile_picture);
+        
+        // Save New Profile Picture and save to database
+        $this->picture->saveAs(Yii::getAlias('@app') . '/web/images/uploads/profile/' . $fileName);
+        if ($file_on_ftp = $this->ftp->put("/" . $fileName, Yii::getAlias('@app') . '/web/images/uploads/profile/' . $fileName, FTP_BINARY)) 
+            unlink(Yii::getAlias('@app') . '/web/images/uploads/profile/' . $fileName);
+
+        return $file_on_ftp;
     }
 }
