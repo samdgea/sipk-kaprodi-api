@@ -46,12 +46,13 @@ class EditAccountPictureForm extends Model
         {
             $fileName = uniqid(rand(), false) . '.' . $this->picture->extension;
             
-            // Process save image to FTP Server
-            $this->_processImage($fileName);
+            $status = $this->_processImage($fileName);
 
-            $this->_user->profile_picture = $fileName;
+            if ($status) {
+                $this->_user->profile_picture = $fileName;
 
-            return $this->_user->save();
+                return $this->_user->save();
+            } 
         }
 
         return false;
@@ -68,15 +69,13 @@ class EditAccountPictureForm extends Model
 
     private function _processImage($fileName)
     {
+        $file_path = Yii::getAlias('@app') . '/web/images/uploads/profile/';
+
         // Check old picture, then remove it
-        if (!empty($this->_user->profile_picture) && $this->ftp->size("/" . $this->_user->profile_picture) > 0)
-            $this->ftp->delete($this->_user->profile_picture);
+        if (!empty($this->_user->profile_picture) && file_exists($file_path . $this->_user->profile_picture))
+            unlink($file_path . $this->_user->profile_picture);
         
         // Save New Profile Picture and save to database
-        $this->picture->saveAs(Yii::getAlias('@app') . '/web/images/uploads/profile/' . $fileName);
-        if ($file_on_ftp = $this->ftp->put("/" . $fileName, Yii::getAlias('@app') . '/web/images/uploads/profile/' . $fileName, FTP_BINARY)) 
-            unlink(Yii::getAlias('@app') . '/web/images/uploads/profile/' . $fileName);
-
-        return $file_on_ftp;
+        return $this->picture->saveAs($file_path . $fileName);
     }
 }
